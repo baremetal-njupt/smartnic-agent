@@ -1,0 +1,10 @@
+---
+features:
+  - |
+    Supports parallel disk device erasure. This is controlled by ironic's
+    ``[deploy]disk_erasure_concurrency`` configuration option.
+other:
+  - |
+    The ``HardwareManager.erase_block_device`` method is now called
+    concurrently when parallel disk device erasure is used. It must be
+    implemented in a thread-safe way.

@@ -1,0 +1,226 @@
+- job:
+    name: ironic-ipa-base
+    parent: ironic-base
+    irrelevant-files:
+      - ^test-requirements.txt$
+      - ^.*\.rst$
+      - ^doc/.*$
+      - ^ironic_python_agent/tests/.*$
+      - ^releasenotes/.*$
+      - ^setup.cfg$
+      - ^tools/.*$
+      - ^tox.ini$
+    required-projects:
+      - openstack/ironic-lib
+      - name: openstack/ironic-python-agent-builder
+        override-checkout: 2.2.0
+    vars:
+      # The default is 1GB, we need a little more to prevent OOMs killing the jobs
+      configure_swap_size: 8192
+      devstack_localrc:
+        IRONIC_RAMDISK_TYPE: tinyipa
+        IRONIC_VM_SPECS_RAM: 512
+        IRONIC_BUILD_DEPLOY_RAMDISK: True
+        IRONIC_VM_COUNT: 2
+
+- job:
+    name: ipa-tempest-wholedisk-bios-ipmi-direct-tinyipa-src
+    parent: ironic-ipa-base
+    timeout: 7200
+    vars:
+      devstack_services:
+        s-account: True
+        s-container: True
+        s-object: True
+        s-proxy: True
+      devstack_localrc:
+        IRONIC_DEFAULT_DEPLOY_INTERFACE: direct
+        IRONIC_TEMPEST_WHOLE_DISK_IMAGE: True
+        IRONIC_VM_EPHEMERAL_DISK: 0
+        SWIFT_ENABLE_TEMPURLS: True
+        SWIFT_TEMPURL_KEY: secretkey
+
+- job:
+    name: ipa-tempest-partition-bios-ipmi-direct-tinyipa-src
+    parent: ironic-ipa-base
+    timeout: 7200
+    vars:
+      devstack_services:
+        s-account: True
+        s-container: True
+        s-object: True
+        s-proxy: True
+      devstack_localrc:
+        IRONIC_DEFAULT_BOOT_OPTION: netboot
+        IRONIC_DEFAULT_DEPLOY_INTERFACE: direct
+        SWIFT_ENABLE_TEMPURLS: True
+        SWIFT_TEMPURL_KEY: secretkey
+
+- job:
+    name: ipa-tempest-partition-bios-ipmi-iscsi-tinyipa-src
+    parent: ironic-ipa-base
+    timeout: 7200
+    vars:
+      devstack_localrc:
+        IRONIC_DEFAULT_BOOT_OPTION: netboot
+
+
+- job:
+    name: ipa-tempest-wholedisk-bios-ipmi-iscsi-tinyipa-src
+    parent: ironic-ipa-base
+    timeout: 7200
+    vars:
+      devstack_localrc:
+        IRONIC_VM_EPHEMERAL_DISK: 0
+        IRONIC_TEMPEST_WHOLE_DISK_IMAGE: True
+
+- job:
+    name: ipa-tempest-ironic-inspector-src
+    parent: ironic-ipa-base
+    timeout: 10800
+    required-projects:
+      # These are in addition to what is in ironic-ipa-base
+      - openstack/ironic-inspector
+      - openstack/python-ironic-inspector-client
+    vars:
+      devstack_localrc:
+        DEVSTACK_GATE_TEMPEST_REGEX: InspectorBasicTest
+        DEVSTACK_GATE_IRONIC_INSPECTOR: 1
+        IRONIC_VM_EPHEMERAL_DISK: 0
+        IRONIC_TEMPEST_WHOLE_DISK_IMAGE: True
+        IRONIC_INSPECTOR_BUILD_RAMDISK: True
+        SWIFT_ENABLE_TEMPURLS: True
+        SWIFT_TEMPURL_KEY: secretkey
+      devstack_plugins:
+        ironic-inspector: https://opendev.org/openstack/ironic-inspector
+
+
+# Experimental jobs
+- job:
+    name: ipa-tempest-dsvm-partition-ipmi-iscsi-tinyipa
+    parent: ironic-ipa-base
+    timeout: 7200
+    required-projects:
+      - openstack/python-ironicclient
+    vars:
+      devstack_localrc:
+        IRONIC_DEFAULT_BOOT_OPTION: netboot
+        EBTABLES_RACE_FIX: True
+        IRONIC_INSPECTOR_BUILD_RAMDISK: True
+        USE_SUBNETPOOL: False
+
+- job:
+    name: ipa-tempest-dsvm-partition-bios-ipmi-iscsi-tinyipa256-src
+    parent: ironic-ipa-base
+    timeout: 7200
+    required-projects:
+      - openstack/ironic-python-agent
+      - openstack/python-ironicclient
+    vars:
+      devstack_localrc:
+        IRONIC_DEFAULT_BOOT_OPTION: netboot
+        EBTABLES_RACE_FIX: True
+        IRONIC_INSPECTOR_BUILD_RAMDISK: True
+        IRONIC_VM_SPECS_RAM: 256
+        USE_SUBNETPOOL: False
+        SWIFT_ENABLE_TEMPURLS: True
+        SWIFT_TEMPURL_KEY: secretkey
+      devstack_services:
+        s-account: True
+        s-container: True
+        s-object: True
+        s-proxy: True
+
+- job:
+    # Security testing for known issues
+    name: ipa-tox-bandit
+    parent: openstack-tox
+    timeout: 2400
+    vars:
+      tox_envlist: bandit
+    irrelevant-files:
+      - ^test-requirements.txt$
+      - ^.*\.rst$
+      - ^doc/.*$
+      - ^ironic_python_agent/tests/.*$
+      - ^releasenotes/.*$
+      - ^setup.cfg$
+      - ^tools/(?!bandit.yml).*$
+      - ^tox.ini$
+
+- job:
+    name: ironic-standalone-ipa-src
+    parent: ironic-standalone
+    description: Test ironic standalone with IPA from source
+    required-projects:
+      - name: openstack/ironic-python-agent-builder
+        override-checkout: 2.2.0
+    vars:
+      devstack_localrc:
+        IRONIC_DEFAULT_BOOT_OPTION: netboot
+        IRONIC_BUILD_DEPLOY_RAMDISK: True
+        # NOTE(dtantsur): the ansible deploy doesn't depend on IPA code,
+        # excluding it from the enabled list to save gate time.
+        IRONIC_ENABLED_DEPLOY_INTERFACES: "iscsi,direct"
+
+- job:
+    name: metalsmith-integration-ipa-src
+    parent: metalsmith-integration-glance-localboot-centos7
+    required-projects:
+      - openstack/ironic-python-agent
+      - name: openstack/ironic-python-agent-builder
+        override-checkout: 2.2.0
+      - openstack/ironic-lib
+    vars:
+      devstack_localrc:
+        # Don't waste time on cleaning, it's checked everywhere else
+        IRONIC_AUTOMATED_CLEAN_ENABLED: False
+        IRONIC_BUILD_DEPLOY_RAMDISK: True
+
+- job:
+    name: ironic-ipa-dib-base
+    parent: ironic-ipa-base
+    required-projects:
+      - openstack/diskimage-builder
+    timeout: 9600
+    vars:
+      tempest_test_timeout: 2400
+      devstack_localrc:
+        IRONIC_RAMDISK_TYPE: dib
+        IRONIC_TEMPEST_BUILD_TIMEOUT: 900
+        IRONIC_VM_INTERFACE_COUNT: 1
+        IRONIC_VM_SPECS_RAM: 3072
+
+- job:
+    name: ipa-tempest-wholedisk-bios-ipmi-direct-dib-src
+    parent: ironic-ipa-dib-base
+    vars:
+      devstack_services:
+        s-account: True
+        s-container: True
+        s-object: True
+        s-proxy: True
+      devstack_localrc:
+        IRONIC_DEFAULT_DEPLOY_INTERFACE: direct
+        IRONIC_TEMPEST_WHOLE_DISK_IMAGE: True
+        IRONIC_VM_EPHEMERAL_DISK: 0
+        SWIFT_ENABLE_TEMPURLS: True
+        SWIFT_TEMPURL_KEY: secretkey
+
+- job:
+    name: ipa-tempest-partition-bios-ipmi-iscsi-dib-src
+    parent: ironic-ipa-dib-base
+    vars:
+      devstack_localrc:
+        IRONIC_DEFAULT_BOOT_OPTION: netboot
+        IRONIC_DEFAULT_DEPLOY_INTERFACE: iscsi
+        IRONIC_TEMPEST_WHOLE_DISK_IMAGE: False
+
+# Cloning the jobs so we can update ipa-builder and then we can the old jobs.
+- job:
+    name: ipa-tempest-bios-ipmi-direct-tinyipa-src
+    parent: ipa-tempest-partition-bios-ipmi-direct-tinyipa-src
+
+- job:
+    name: ipa-tempest-bios-ipmi-iscsi-tinyipa-src
+    parent: ipa-tempest-partition-bios-ipmi-iscsi-tinyipa-src

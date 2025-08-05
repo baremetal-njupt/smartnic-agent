@@ -1,0 +1,33 @@
+*.py[co]
+src/*
+build/*
+AUTHORS
+ChangeLog
+*.egg*
+.tox/*
+.idea
+devenv/*
+cover
+.coverage
+coverage.xml
+.stestr
+imagebuild/.image_cache
+imagebuild/coreos/build
+imagebuild/coreos/dist
+imagebuild/coreos/oem/authorized_keys
+imagebuild/coreos/oem/container.tar.gz
+imagebuild/coreos/UPLOAD
+*.swp
+_build
+doc/source/contributor/api/
+doc/build
+.proxy.sh.save
+
+# release notes build
+releasenotes/build
+
+# upper-constraints handling for image builds
+upper-constraints.txt
+
+# auto-generated example file
+etc/ironic_python_agent/ironic_python_agent.conf.sample
